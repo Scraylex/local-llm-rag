@@ -2,6 +2,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.embeddings.huggingface import HuggingFaceEmbeddings
 from torch import cuda
 import PyPDF2
+import os
 
 
 def create_text_splitter(max_seq_len: int, overlap=30) -> RecursiveCharacterTextSplitter:
@@ -12,7 +13,7 @@ def create_text_splitter(max_seq_len: int, overlap=30) -> RecursiveCharacterText
     return text_splitter
 
 
-def create_embedding_model(model_name: str = 'all-MiniLM-L6-v2', batch_size: int = 32) -> HuggingFaceEmbeddings:
+def create_embedding_model(model_name: str, batch_size: int) -> HuggingFaceEmbeddings:
     device = f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu'
     model_kwargs = {'device': device}
     encode_kwargs = {

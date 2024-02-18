@@ -3,20 +3,20 @@ import os
 from tqdm import tqdm
 
 from util import create_text_splitter, create_embedding_model, extract_text_from_pdf
-from web.pinecone_client import PineconeClient
+from pinecone_client import PineconeClient
 
 
 class EmbeddingProcessor:
-    def __init__(self, dir_path: str, model: str, batch: int):
+    def __init__(self, dir_path: str):
+        batch = int(os.getenv('BATCH_SIZE', '32'))
+        model = os.getenv('MODEL_NAME', 'all-MiniLM-L6-v2')
         self.dir_path = dir_path
-        self.model = model
-        self.batch = batch
         self.pc_client = PineconeClient()
-        self.embed_model = create_embedding_model(model_name=model, batch_size=batch)
-        self.text_splitter = create_text_splitter(self.embed_model.client.tokenizer.model_max_length, self.batch)
+        self.embed_model = create_embedding_model(batch_size=batch, model_name=model)
+        self.text_splitter = create_text_splitter(self.embed_model.client.tokenizer.model_max_length)
 
     def embed_dir_to_pinecone(self) -> None:
-        self.pc_client.ready_check(self.embed_model)
+        self.pc_client.ready_check()
         if os.path.exists(self.dir_path):
             sorted_filenames = sorted(os.listdir(self.dir_path))
             for filename in tqdm(sorted_filenames):

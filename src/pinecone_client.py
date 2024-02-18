@@ -1,11 +1,9 @@
 import os
 import time
 
-import pinecone
 from dotenv import load_dotenv
-from langchain.embeddings.huggingface import HuggingFaceEmbeddings
-from pinecone import Pinecone
-from langchain.vectorstores.pinecone import Pinecone as VectorStorePinecone
+from pinecone import Pinecone, Index, PodSpec
+from util import create_embedding_model
 
 
 class PineconeClient:
@@ -18,30 +16,30 @@ class PineconeClient:
         self.idx_name = os.getenv("PINECONE_IDX")
         self.pc = Pinecone(api_key=api_key, environment=self.env)
 
-    def ready_check(self, embed_model: HuggingFaceEmbeddings) -> None:
+    def ready_check(self) -> None:
+        model_name = os.getenv('EMBEDDING_MODEL_NAME')
+
+        if model_name is None:
+            raise ValueError("Please set the EMBEDDING_MODEL_NAME environment variable")
+
         docs = [
             "this is one document",
         ]
-        embeddings = embed_model.embed_documents(docs)
+
+        embeddings = create_embedding_model(model_name=model_name, batch_size=1).embed_documents(docs)
 
         if self.idx_name not in self.pc.list_indexes().names():
             self.pc.create_index(
                 self.idx_name,
                 dimension=len(embeddings[0]),
                 metric='cosine',
-                spec=pinecone.PodSpec(environment=self.env)
+                spec=PodSpec(environment=self.env)
             )
             while not self.pc.describe_index(self.idx_name).status['ready']:
                 time.sleep(1)
 
-    def connect(self) -> pinecone.Index:
+    def connect(self) -> Index:
         return self.pc.Index(self.idx_name)
-
-    def get_as_vectorstore(self) -> VectorStorePinecone:
-        index = self.connect()
-        text_field = 'text'  # field in metadata that contains text content
-        vectorstore = VectorStorePinecone(index, text_field=text_field)
-        return vectorstore
 
     def upsert_to_pinecone(self, file_path: str, to_upsert) -> None:
         index = self.connect()
